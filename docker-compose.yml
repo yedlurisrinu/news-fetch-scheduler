@@ -12,16 +12,17 @@ services:
       - VAULT_SECRET_PATH=secret/NEWS_SUMMARY_APP
     networks:
       - vault-network
-      - infra-network
+      - service-network
     restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "cat /proc/1/status | grep -q 'State:.*running\\|State:.*sleeping' || exit 1" ]
-      interval: 60s
+      interval: 5m
+      start_period: 90s
+      start_interval: 10s
       timeout: 10s
       retries: 3
-      start_period: 30s
 networks:
   vault-network:
     external: true
-  infra-network:
+  service-network:
     external: true
