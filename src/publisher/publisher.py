@@ -10,12 +10,12 @@ from pathlib import Path
 from common.utils import generate_id
 from article_dedup.article_deduplicator import ArticleDeduplicator
 from config.postgres_setup import instantiate_connection
-from config import settings
 from confluent_kafka import Producer
 import json
 import logging
 from config.confluent_config import read_config
 from config.confluent_producer_setup import get_producer
+from config.news_scheduler_settings import get_setting
 
 BASE_PATH = str(Path(__file__).parent.parent)
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ def _deduplicator() -> ArticleDeduplicator:
 
 @lru_cache(maxsize=None)
 def _producer() -> Producer:
-    kafka_config = read_config(BASE_PATH + "/resources/confluent-client.properties")
+    kafka_config = read_config(BASE_PATH + "/resources/kafka-client.properties")
     return get_producer(kafka_config)
 
 def publish_to_kafka(articles: list[dict]):
@@ -39,9 +39,9 @@ def publish_to_kafka(articles: list[dict]):
         key =  article["link"]+ article['published_at'] + article['source']
         if not dedup.is_duplicate(key):
             published_count += 1
-            prod.produce(settings.TOPIC_NAME, json.dumps(article), generate_id(key))
+            prod.produce(get_setting('TOPIC_NAME'), json.dumps(article), generate_id(key))
             dedup.mark_seen(key)
-            logger.debug(f"Produced messages to topic {settings.TOPIC_NAME}: key = {key:12}")
+            logger.debug(f"Produced messages to topic {get_setting('TOPIC_NAME')}: key = {key:12}")
 
     # send any outstanding or buffered messages to the Kafka broker
     prod.flush()

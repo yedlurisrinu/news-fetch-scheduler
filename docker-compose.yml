@@ -9,10 +9,10 @@ services:
       - PYTHONPATH=src
       - VAULT_ADDR=http://vault-server:8200
       - VAULT_TOKEN=${VAULT_TOKEN}
-      - VAULT_SECRET_PATH=secret/NEWS_SUMMARY_APP
+      - VAULT_SECRET_PATH=secret/DB_SERVICES
     networks:
       - vault-network
-      - service-network
+      - services_network
     restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "cat /proc/1/status | grep -q 'State:.*running\\|State:.*sleeping' || exit 1" ]
@@ -21,8 +21,10 @@ services:
       start_interval: 10s
       timeout: 10s
       retries: 3
+    volumes:
+      - ../logs:/app/logs
 networks:
   vault-network:
     external: true
-  service-network:
+  services_network:
     external: true

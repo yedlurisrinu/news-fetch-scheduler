@@ -2,7 +2,7 @@ import os
 
 import httpx
 from datetime import datetime, timezone
-from config.settings import NEWS_API_URL, NEWS_API_PARAMS
+from config.news_scheduler_settings import get_setting
 import logging
 from common.article import Article
 
@@ -17,8 +17,8 @@ def fetch_api_articles() -> list[dict]:
         """
     articles = []
     try:
-        params = {**NEWS_API_PARAMS, "apiKey": os.getenv('API.NEWS_API_KEY')}
-        response = httpx.get(NEWS_API_URL, params=params, timeout=10)
+        params = {**get_setting('NEWS_API_PARAMS'), "apiKey": os.getenv('API.NEWS_API_KEY')}
+        response = httpx.get(get_setting('NEWS_API_URL'), params=params, timeout=10)
         response.raise_for_status()
 
         data = response.json()

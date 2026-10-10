@@ -1,0 +1,13 @@
+RSS_FEEDS=[
+    {"name"= "BBC",        "url"= "http://feeds.bbci.co.uk/news/rss.xml"},
+    {"name"= "Reuters",    "url"= "https://feeds.reuters.com/reuters/topNews"},
+    {"name"= "TechCrunch", "url"= "https://techcrunch.com/feed/"},
+    {"name"= "Wired",      "url"= "https://www.wired.com/feed/rss"},
+    {"name"= "Hacker News","url"= "https://hnrss.org/frontpage"},
+]
+NEWS_API_URL="https://newsapi.org/v2/top-headlines"
+NEWS_API_PARAMS={"language"= "en","pageSize"= 100}
+# Topic name: partitions : 6
+TOPIC_NAME="news_ai_pipeline_dev_t_0"
+TOPIC_FLUSH_BATCH_SIZE=100
+SCHEDULER_INTERVAL_MINUTES=30

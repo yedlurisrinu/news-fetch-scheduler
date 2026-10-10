@@ -82,8 +82,8 @@ class TestFetchRssArticles:
             mock_parse.return_value = _make_feed([entry, entry])  # 2 entries per feed
             result = fetch_rss_articles()
 
-        from config.settings import RSS_FEEDS
-        assert len(result) == 2 * len(RSS_FEEDS)
+        from config.news_scheduler_settings import get_setting
+        assert len(result) == 2 * len(get_setting('RSS_FEEDS'))
 
     ### Error isolation
 
@@ -104,8 +104,8 @@ class TestFetchRssArticles:
             result = fetch_rss_articles()
 
         # First feed failed, remaining feeds produced articles
-        from config.settings import RSS_FEEDS
-        assert len(result) == (len(RSS_FEEDS) - 1) * 1
+        from config.news_scheduler_settings import get_setting
+        assert len(result) == (len(get_setting('RSS_FEEDS')) - 1) * 1
 
     def test_returns_empty_list_when_all_feeds_fail(self):
         with patch("newsfeed.rss_feed.feedparser.parse", side_effect=Exception("all fail")):

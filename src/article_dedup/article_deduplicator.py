@@ -1,6 +1,6 @@
 import hashlib
 import logging
-
+import datetime
 logger = logging.getLogger(__name__)
 
 class ArticleDeduplicator:
@@ -35,11 +35,11 @@ class ArticleDeduplicator:
         # Write to DB
         with self.conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO news_article_ids (article_id_hash)
-                VALUES (%s)
+                INSERT INTO news_article_ids(article_id_hash, created_at)
+                VALUES (%s,%s)
                 ON CONFLICT DO NOTHING
-            """, (id_hash,))
+            """, (id_hash,datetime.datetime.now(datetime.timezone.utc)))
             self.conn.commit()
-
+# TODO make datetime UTC
         # Write to local cache
         self.local_cache.add(id_hash)

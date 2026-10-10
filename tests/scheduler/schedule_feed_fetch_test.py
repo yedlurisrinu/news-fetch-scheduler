@@ -36,14 +36,14 @@ class TestScheduleFetch:
         mock_schedule.every.assert_called_once()
 
     def test_schedule_interval_matches_settings(self):
-        from config.settings import SCHEDULER_INTERVAL_MINUTES
+        from config.news_scheduler_settings import get_setting
         with patch("scheduler.schedule_feed_fetch.fetch_all_articles"), \
              patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
              patch("scheduler.schedule_feed_fetch.schedule") as mock_schedule:
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 
-        mock_schedule.every.assert_called_once_with(SCHEDULER_INTERVAL_MINUTES)
+        mock_schedule.every.assert_called_once_with(get_setting('SCHEDULER_INTERVAL_MINUTES'))
 
     def test_do_registers_fetch_all_articles_as_job(self):
         with patch("scheduler.schedule_feed_fetch.fetch_all_articles") as mock_fetch, \

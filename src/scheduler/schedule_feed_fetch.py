@@ -7,7 +7,7 @@
 import time
 import schedule
 import logging
-from config.settings import SCHEDULER_INTERVAL_MINUTES
+from config.news_scheduler_settings import get_setting
 from newsfeed.fetch_all_articles import fetch_all_articles
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ def schedule_fetch():
     # Run fetch articles on start info
     fetch_all_articles()
     # Then schedule
-    schedule.every(SCHEDULER_INTERVAL_MINUTES).minutes.do(fetch_all_articles)
-    logger.info(f"[Scheduler] Starting — polling every {SCHEDULER_INTERVAL_MINUTES} mins")
+    schedule.every(get_setting('SCHEDULER_INTERVAL_MINUTES')).minutes.do(fetch_all_articles)
+    logger.info(f"[Scheduler] Starting — polling every {get_setting('SCHEDULER_INTERVAL_MINUTES')} mins")
     while True:
         schedule.run_pending()
         if logger.level == logging.DEBUG:

@@ -3,7 +3,7 @@ import feedparser
 from datetime import datetime, timezone
 from common.utils import parse_to_iso
 from common.article import Article
-from config.settings import RSS_FEEDS
+from config.news_scheduler_settings import get_setting
 import logging
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ def fetch_rss_articles() -> list[dict]:
     :return: list of Articles as dictionaries
     """
     articles = []
-    for feed_config in RSS_FEEDS:
+    for feed_config in get_setting('RSS_FEEDS'):
         try:
             feed = feedparser.parse(feed_config["url"])
             for entry in feed.entries:

@@ -60,7 +60,8 @@ class TestPublishToKafka:
         publisher.publish_to_kafka([_ARTICLE])
 
         args = mock_prod.produce.call_args[0]
-        assert args[0] == publisher.settings.TOPIC_NAME
+        from config.news_scheduler_settings import get_setting
+        assert args[0] == get_setting('TOPIC_NAME')
 
     def test_publish_serialises_article_as_json(self, mock_lazy_factories):
         mock_prod, mock_dedup = mock_lazy_factories

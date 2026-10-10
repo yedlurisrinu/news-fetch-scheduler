@@ -15,9 +15,4 @@ def get_producer(config):
   :param config:
   :return: Producer
   """
-  return Producer({
-                   'bootstrap.servers': os.getenv('CONFLUENT.bootstrap.servers'),
-                   'sasl.username': os.getenv('CONFLUENT.sasl.username'),
-                   'sasl.password': os.getenv('CONFLUENT.sasl.password'),
-                   'client.id': os.getenv('CONFLUENT.client.id'),
-                   **config})
+  return Producer({**config})
