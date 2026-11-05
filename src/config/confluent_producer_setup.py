@@ -1,17 +1,11 @@
-"""
-@Author: Srini Yedluri
-@Date: 3/26/26
-@Time: 11:10 AM
-@File: confluent_producer_setup.py
-"""
-import os
+from typing import Any
 
 from confluent_kafka import Producer
 
-def get_producer(config):
+def get_producer(config: dict[str, Any]) -> Producer:
   """
-  Creates Producer based on configuration provided and
-  secrets information from environment variables
+  Creates the Kafka Producer from the settings read from
+  resources/kafka-client.properties (bootstrap servers, client tuning)
   :param config:
   :return: Producer
   """

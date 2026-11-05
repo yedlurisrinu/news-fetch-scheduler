@@ -52,8 +52,7 @@ class TestGetProducer:
 
     def test_merges_extra_config_into_producer(self):
         extra = {"security.protocol": "SASL_SSL", "sasl.mechanisms": "PLAIN"}
-        with patch("config.confluent_producer_setup.os.getenv", return_value="val"), \
-             patch("config.confluent_producer_setup.Producer") as mock_producer_cls:
+        with patch("config.confluent_producer_setup.Producer") as mock_producer_cls:
             get_producer(extra)
 
         kwargs = mock_producer_cls.call_args[0][0]
@@ -62,8 +61,7 @@ class TestGetProducer:
 
     def test_returns_producer_instance(self):
         mock_instance = MagicMock()
-        with patch("config.confluent_producer_setup.os.getenv", return_value="val"), \
-             patch("config.confluent_producer_setup.Producer", return_value=mock_instance):
+        with patch("config.confluent_producer_setup.Producer", return_value=mock_instance):
             result = get_producer({})
 
         assert result is mock_instance

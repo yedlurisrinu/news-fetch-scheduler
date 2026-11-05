@@ -6,7 +6,14 @@ The infinite while-loop is short-circuited by having time.sleep raise KeyboardIn
 import pytest
 from unittest.mock import MagicMock, patch, call
 
+from scheduler import schedule_feed_fetch
 from scheduler.schedule_feed_fetch import schedule_fetch
+
+
+@pytest.fixture(autouse=True)
+def _heartbeat_in_tmp(tmp_path, monkeypatch):
+    """Keep the loop's heartbeat file out of the real /tmp."""
+    monkeypatch.setattr(schedule_feed_fetch, "HEARTBEAT_FILE", tmp_path / "heartbeat")
 
 
 class TestScheduleFetch:
@@ -33,7 +40,7 @@ class TestScheduleFetch:
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 
-        mock_schedule.every.assert_called_once()
+        assert mock_schedule.every.call_count == 2  # fetch job + daily dedup refresh
 
     def test_schedule_interval_matches_settings(self):
         from config.news_scheduler_settings import get_setting
@@ -43,18 +50,65 @@ class TestScheduleFetch:
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 
-        mock_schedule.every.assert_called_once_with(get_setting('SCHEDULER_INTERVAL_MINUTES'))
+        mock_schedule.every.assert_any_call(get_setting('SCHEDULER_INTERVAL_MINUTES'))
 
-    def test_do_registers_fetch_all_articles_as_job(self):
-        with patch("scheduler.schedule_feed_fetch.fetch_all_articles") as mock_fetch, \
+    def test_do_registers_fetch_job_wrapper(self):
+        with patch("scheduler.schedule_feed_fetch.fetch_all_articles"), \
              patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
              patch("scheduler.schedule_feed_fetch.schedule") as mock_schedule:
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 
-        # schedule.every(...).minutes.do(fetch_all_articles)
+        # schedule.every(...).minutes.do(_run_fetch_job)
         do_call = mock_schedule.every.return_value.minutes.do
-        do_call.assert_called_once_with(mock_fetch)
+        do_call.assert_called_once_with(schedule_feed_fetch._run_fetch_job)
+
+    def test_registers_daily_dedup_refresh_at_configured_time(self):
+        from config.news_scheduler_settings import get_setting
+        with patch("scheduler.schedule_feed_fetch.fetch_all_articles"), \
+             patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
+             patch("scheduler.schedule_feed_fetch.schedule") as mock_schedule:
+            with pytest.raises(KeyboardInterrupt):
+                schedule_fetch()
+
+        daily = mock_schedule.every.return_value.day
+        daily.at.assert_called_once_with(get_setting('DEDUP_REFRESH_AT'))
+        daily.at.return_value.do.assert_called_once_with(schedule_feed_fetch._run_dedup_refresh_job)
+
+    def test_dedup_refresh_job_failure_is_logged_not_raised(self):
+        with patch("scheduler.schedule_feed_fetch.refresh_dedup_cache", side_effect=RuntimeError("db down")), \
+             patch("scheduler.schedule_feed_fetch.logger") as logger:
+            schedule_feed_fetch._run_dedup_refresh_job()  # must not raise
+        logger.exception.assert_called_once()
+
+    ### Job failures do not kill the scheduler
+
+    def test_initial_fetch_failure_does_not_stop_scheduler(self):
+        with patch("scheduler.schedule_feed_fetch.fetch_all_articles", side_effect=RuntimeError("db down")), \
+             patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
+             patch("scheduler.schedule_feed_fetch.schedule") as mock_schedule:
+            with pytest.raises(KeyboardInterrupt):
+                schedule_fetch()
+
+        mock_schedule.run_pending.assert_called()
+
+    def test_run_fetch_job_logs_exception(self):
+        with patch("scheduler.schedule_feed_fetch.fetch_all_articles", side_effect=RuntimeError("boom")), \
+             patch("scheduler.schedule_feed_fetch.logger") as mock_logger:
+            schedule_feed_fetch._run_fetch_job()  # must not raise
+
+        mock_logger.exception.assert_called_once()
+
+    ### Heartbeat
+
+    def test_heartbeat_file_touched_in_loop(self):
+        with patch("scheduler.schedule_feed_fetch.fetch_all_articles"), \
+             patch("scheduler.schedule_feed_fetch.schedule"), \
+             patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt):
+            with pytest.raises(KeyboardInterrupt):
+                schedule_fetch()
+
+        assert schedule_feed_fetch.HEARTBEAT_FILE.exists()
 
     ### Polling loop
 
@@ -91,7 +145,7 @@ class TestScheduleFetch:
              patch("scheduler.schedule_feed_fetch.schedule"), \
              patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
              patch("scheduler.schedule_feed_fetch.logger") as mock_logger:
-            mock_logger.level = logging.DEBUG
+            mock_logger.isEnabledFor.return_value = True
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 
@@ -103,7 +157,7 @@ class TestScheduleFetch:
              patch("scheduler.schedule_feed_fetch.schedule"), \
              patch("scheduler.schedule_feed_fetch.time.sleep", side_effect=KeyboardInterrupt), \
              patch("scheduler.schedule_feed_fetch.logger") as mock_logger:
-            mock_logger.level = logging.INFO
+            mock_logger.isEnabledFor.return_value = False
             with pytest.raises(KeyboardInterrupt):
                 schedule_fetch()
 

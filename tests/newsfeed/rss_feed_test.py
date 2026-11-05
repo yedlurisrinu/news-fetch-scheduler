@@ -9,6 +9,14 @@ from datetime import datetime, timezone
 from newsfeed.rss_feed import fetch_rss_articles, _parse_date
 
 
+@pytest.fixture(autouse=True)
+def mock_http_client():
+    """Never hit the network: the shared HTTP client returns a canned response."""
+    client = MagicMock()
+    with patch("newsfeed.rss_feed.http_client", return_value=client):
+        yield client
+
+
 def _make_entry(title="Headline", summary="Summary text", link="http://example.com",
                 published="Tue, 17 Mar 2026 21:39:17 +0000", pub_date=None):
     """Build a feedparser-style entry object."""
@@ -106,6 +114,35 @@ class TestFetchRssArticles:
         # First feed failed, remaining feeds produced articles
         from config.news_scheduler_settings import get_setting
         assert len(result) == (len(get_setting('RSS_FEEDS')) - 1) * 1
+
+    def test_fetches_with_http_client_and_parses_content(self, mock_http_client):
+        with patch("newsfeed.rss_feed.feedparser.parse", return_value=_make_feed([])) as mock_parse:
+            fetch_rss_articles()
+
+        from config.news_scheduler_settings import get_setting
+        first_url = get_setting('RSS_FEEDS')[0]["url"]
+        mock_http_client.get.assert_any_call(first_url)
+        mock_http_client.get.return_value.raise_for_status.assert_called()
+        mock_parse.assert_called_with(mock_http_client.get.return_value.content)
+
+    def test_skips_feed_on_http_error(self, mock_http_client):
+        import httpx
+        mock_http_client.get.side_effect = httpx.ConnectTimeout("timed out")
+        with patch("newsfeed.rss_feed.feedparser.parse") as mock_parse:
+            result = fetch_rss_articles()
+        assert result == []
+        mock_parse.assert_not_called()
+
+    def test_network_error_logs_one_line_warning_without_traceback(self, mock_http_client):
+        import httpx
+        mock_http_client.get.side_effect = httpx.ConnectError("[Errno 111] Connection refused")
+        with patch("newsfeed.rss_feed.logger") as mock_logger:
+            fetch_rss_articles()
+        mock_logger.warning.assert_called()
+        mock_logger.exception.assert_not_called()
+        mock_logger.error.assert_not_called()
+        message = mock_logger.warning.call_args[0][0]
+        assert "ConnectError" in message and "\n" not in message
 
     def test_returns_empty_list_when_all_feeds_fail(self):
         with patch("newsfeed.rss_feed.feedparser.parse", side_effect=Exception("all fail")):

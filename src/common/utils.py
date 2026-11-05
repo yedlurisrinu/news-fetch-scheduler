@@ -2,18 +2,6 @@ import hashlib
 from email.utils import parsedate_to_datetime
 from datetime import datetime, timezone
 
-MIN_CONTENT_LENGTH = 300  # characters
-
-def is_truncated(summary: str) -> bool:
-    indicators = [
-        len(summary) < MIN_CONTENT_LENGTH,
-        summary.strip().endswith("..."),
-        summary.strip().endswith("…"),
-        "read more" in summary.lower(),
-        "continue reading" in summary.lower(),
-    ]
-    return any(indicators)
-
 def generate_id(key: str) -> str:
     return hashlib.md5(key.encode()).hexdigest()
 

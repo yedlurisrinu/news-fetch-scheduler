@@ -52,7 +52,9 @@ class TestWarmCache:
 
         executed_sql = cursor.execute.call_args[0][0]
         assert "NEWS_ARTICLE_IDS" in executed_sql
-        assert "2 days" in executed_sql
+        assert "CURRENT_DATE - %s::integer" in executed_sql  # whole days: created_at is a DATE
+        from config.news_scheduler_settings import get_setting
+        assert cursor.execute.call_args[0][1] == (get_setting('DEDUP_WINDOW_DAYS'),)
 
 
 class TestIsDuplicate:
@@ -133,3 +135,29 @@ class TestMarkSeen:
         dedup.mark_seen("article_key")
 
         assert dedup.is_duplicate("article_key") is True
+
+
+class TestRefresh:
+    def test_refresh_replaces_cache_with_db_window(self, mock_conn):
+        conn, cursor = mock_conn
+        cursor.fetchall.return_value = [("old-1",), ("keep",)]
+        dedup = ArticleDeduplicator(conn)
+        dedup.local_cache.add("marked-in-memory")
+
+        cursor.fetchall.return_value = [("keep",), ("new-1",)]
+        dedup.refresh()
+
+        assert dedup.local_cache == {"keep", "new-1"}
+
+    def test_failed_refresh_keeps_current_cache(self, mock_conn):
+        conn, cursor = mock_conn
+        cursor.fetchall.return_value = [("a",), ("b",)]
+        dedup = ArticleDeduplicator(conn)
+
+        cursor.execute.side_effect = RuntimeError("connection lost")
+        with patch("article_dedup.article_deduplicator.logger") as logger:
+            dedup.refresh()  # must not raise
+
+        assert dedup.local_cache == {"a", "b"}
+        logger.exception.assert_called_once()
+

@@ -1,5 +1,5 @@
 # ── Stage 1: Builder ──────────────────────────────────────
-FROM python:3.12-slim AS builder
+FROM python:3.12.16-slim AS builder
 
 WORKDIR /app
 
@@ -21,7 +21,7 @@ COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
 
 # ── Stage 2: Runtime ──────────────────────────────────────
-FROM python:3.12-slim AS runtime
+FROM python:3.12.16-slim AS runtime
 
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
@@ -29,14 +29,6 @@ ENV PATH="/app/.venv/bin:$PATH"
 
 # Copy source code and static files
 COPY src/ ./src/
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages \
-                    /usr/local/lib/python3.12/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy source code and static files
-COPY . .
-
 # Set PYTHONPATH so imports resolve cleanly
 ENV PYTHONPATH=src
 # Non-root user for security
@@ -47,6 +39,10 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 USER appuser
 
-# Run with Gunicorn + Uvicorn workers for production
-CMD ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8005", "--log-level", "info"]
+# Healthy while the scheduler loop keeps touching the heartbeat file (< 5 min old)
+HEALTHCHECK --interval=60s --timeout=10s --start-period=120s --retries=3 \
+    CMD ["python", "-c", "import os, sys, time; sys.exit(0 if time.time() - os.path.getmtime('/tmp/heartbeat') < 300 else 1)"]
+
+# Long-running scheduler process (no HTTP server, no exposed port)
+CMD ["python", "src/main.py"]
 

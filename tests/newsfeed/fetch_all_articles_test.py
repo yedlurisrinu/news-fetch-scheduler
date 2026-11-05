@@ -92,7 +92,7 @@ class TestFetchAllArticles:
              patch("newsfeed.fetch_all_articles.fetch_api_articles", return_value=[_API_ARTICLE]), \
              patch("newsfeed.fetch_all_articles.publisher.publish_to_kafka"), \
              patch("newsfeed.fetch_all_articles.logger") as mock_logger:
-            mock_logger.level = logging.DEBUG
+            mock_logger.isEnabledFor.return_value = True
             fetch_all_articles()
 
         debug_calls = [str(c) for c in mock_logger.debug.call_args_list]
@@ -105,7 +105,7 @@ class TestFetchAllArticles:
              patch("newsfeed.fetch_all_articles.fetch_api_articles", return_value=[_API_ARTICLE]), \
              patch("newsfeed.fetch_all_articles.publisher.publish_to_kafka"), \
              patch("newsfeed.fetch_all_articles.logger") as mock_logger:
-            mock_logger.level = logging.INFO
+            mock_logger.isEnabledFor.return_value = False
             fetch_all_articles()
 
         mock_logger.debug.assert_not_called()

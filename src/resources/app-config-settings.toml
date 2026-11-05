@@ -1,13 +1,26 @@
 RSS_FEEDS=[
-    {"name"= "BBC",        "url"= "http://feeds.bbci.co.uk/news/rss.xml"},
-    {"name"= "Reuters",    "url"= "https://feeds.reuters.com/reuters/topNews"},
+    {"name"= "BBC",        "url"= "https://feeds.bbci.co.uk/news/rss.xml"},
+    {"name"= "Reuters",    "url"= "https://news.google.com/rss/search?q=when:24h+site:reuters.com&ceid=US:en&hl=en-US&gl=US"},
     {"name"= "TechCrunch", "url"= "https://techcrunch.com/feed/"},
     {"name"= "Wired",      "url"= "https://www.wired.com/feed/rss"},
-    {"name"= "Hacker News","url"= "https://hnrss.org/frontpage"},
+    # Hacker News uses the official feed (30 front-page items). hnrss.org/frontpage was replaced on
+    # 2026-11-04: on this network the router's DNS (192.168.1.1) sinkholes hnrss.org to 0.0.0.0, so every
+    # fetch failed with "Connection refused" (its real IP resolves over DNS-over-HTTPS). The old feedparser
+    # fetch hid that error. To use hnrss.org again (more items via ?count=, extra feeds), allowlist it in
+    # the router's DNS filter first.
+    {"name"= "Hacker News","url"= "https://news.ycombinator.com/rss"},
 ]
 NEWS_API_URL="https://newsapi.org/v2/top-headlines"
-NEWS_API_PARAMS={"language"= "en","pageSize"= 100}
-# Topic name: partitions : 6
+NEWS_API_PARAMS={"language"= "en","country"="us"}
+# Topic name (3 partitions on the local broker)
 TOPIC_NAME="news_ai_pipeline_dev_t_0"
 TOPIC_FLUSH_BATCH_SIZE=100
+KAFKA_FLUSH_TIMEOUT_SECONDS=30
 SCHEDULER_INTERVAL_MINUTES=30
+# Dedup cache/window in days
+DEDUP_WINDOW_DAYS=2
+# daily reload of the in-memory dedup cache from the DB window (HH:MM, container time = UTC)
+DEDUP_REFRESH_AT="00:05"
+HTTP_TIMEOUT_SECONDS=10
+SCHEDULER_SLEEP_SECONDS=5
+DB_CONNECT_TIMEOUT_SECONDS=10

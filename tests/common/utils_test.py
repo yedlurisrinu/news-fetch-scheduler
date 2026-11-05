@@ -1,61 +1,13 @@
 """
 ### Unit tests for src/common/utils.py
-Tests is_truncated, generate_id, and parse_to_iso utility functions.
+Tests generate_id and parse_to_iso utility functions.
 """
 import hashlib
 import pytest
 from unittest.mock import patch
 from datetime import timezone
 
-from common.utils import is_truncated, generate_id, parse_to_iso, MIN_CONTENT_LENGTH
-
-
-class TestIsTruncated:
-
-    ### Truncated indicators
-
-    def test_short_summary_is_truncated(self):
-        short = "x" * (MIN_CONTENT_LENGTH - 1)
-        assert is_truncated(short) is True
-
-    def test_exactly_min_length_not_truncated_by_length(self):
-        # At exactly MIN_CONTENT_LENGTH, the length check is False
-        text = "x" * MIN_CONTENT_LENGTH
-        # no other indicators — should not be truncated
-        assert is_truncated(text) is False
-
-    def test_ends_with_ellipsis_three_dots(self):
-        text = "x" * MIN_CONTENT_LENGTH + "..."
-        assert is_truncated(text) is True
-
-    def test_ends_with_ellipsis_unicode(self):
-        text = "x" * MIN_CONTENT_LENGTH + "…"
-        assert is_truncated(text) is True
-
-    def test_ends_with_ellipsis_with_trailing_space(self):
-        # strip() is applied before endswith check
-        text = "x" * MIN_CONTENT_LENGTH + "...   "
-        assert is_truncated(text) is True
-
-    def test_contains_read_more(self):
-        text = "x" * MIN_CONTENT_LENGTH + " read more"
-        assert is_truncated(text) is True
-
-    def test_contains_read_more_case_insensitive(self):
-        text = "x" * MIN_CONTENT_LENGTH + " Read More"
-        assert is_truncated(text) is True
-
-    def test_contains_continue_reading(self):
-        text = "x" * MIN_CONTENT_LENGTH + " continue reading here"
-        assert is_truncated(text) is True
-
-    def test_contains_continue_reading_case_insensitive(self):
-        text = "x" * MIN_CONTENT_LENGTH + " Continue Reading"
-        assert is_truncated(text) is True
-
-    def test_long_clean_summary_not_truncated(self):
-        text = "This is a full detailed article body. " * 20  # well over 300 chars
-        assert is_truncated(text) is False
+from common.utils import generate_id, parse_to_iso
 
 
 class TestGenerateId:

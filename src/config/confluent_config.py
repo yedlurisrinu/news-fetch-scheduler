@@ -2,13 +2,13 @@
 import logging
 logger = logging.getLogger(__name__)
 
-def read_config(client_properties):
+def read_config(client_properties: str) -> dict[str, str]:
   """
   Reads confluent Kafka configuration from properties file
   :param client_properties:
   :return: dictionary
   """
-  config = {}
+  config: dict[str, str] = {}
   try:
     with open(client_properties) as fh:
       for line in fh:

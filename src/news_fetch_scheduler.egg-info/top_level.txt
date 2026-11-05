@@ -1,8 +1,0 @@
-article_dedup
-common
-config
-main
-newsfeed
-publisher
-resources
-scheduler

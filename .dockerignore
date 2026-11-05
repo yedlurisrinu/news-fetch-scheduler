@@ -1,6 +1,6 @@
-__pycache__/
-*.pyc
-*.pyo
+**/__pycache__
+**/*.py[co]
+**/*.egg-info
 .pytest_cache/
 .coverage
 htmlcov/
@@ -15,5 +15,7 @@ dist/
 build/
 start.sh
 README.md
+*.MD
+demo/
 .github/
 .venv
