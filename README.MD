@@ -196,8 +196,8 @@ to console-only and logs `Failed to load application logging`.
 
 ```bash
 uv sync                      # includes the dev group (pytest, pytest-mock, pytest-cov, mypy)
-uv run pytest                # 117 tests
-uv run pytest --cov=src      # with coverage
+uv run pytest                # 129 tests
+uv run pytest --cov          # with coverage: 100%, fails below 90% ([tool.coverage] in pyproject.toml)
 uv run mypy --strict src
 ```
 

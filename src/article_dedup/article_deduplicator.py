@@ -1,6 +1,6 @@
+import datetime
 import hashlib
 import logging
-import datetime
 
 from psycopg import Connection
 
@@ -8,8 +8,8 @@ from config.news_scheduler_settings import get_setting
 
 logger = logging.getLogger(__name__)
 
-class ArticleDeduplicator:
 
+class ArticleDeduplicator:
     def __init__(self, conn: Connection) -> None:
         self.conn = conn
         self.local_cache: set[str] = set()  # fast O(1) lookups
@@ -21,8 +21,10 @@ class ArticleDeduplicator:
         created_at is a DATE, so the window is compared in whole days: comparing it with
         NOW() - n days would drop every row from the oldest day (stored as midnight)."""
         with self.conn.cursor() as cur:
-            cur.execute(""" SELECT ARTICLE_ID_HASH FROM NEWS_ARTICLE_IDS WHERE CREATED_AT >= CURRENT_DATE - %s::integer""",
-                        (get_setting('DEDUP_WINDOW_DAYS'),))
+            cur.execute(
+                """ SELECT ARTICLE_ID_HASH FROM NEWS_ARTICLE_IDS WHERE CREATED_AT >= CURRENT_DATE - %s::integer""",
+                (get_setting("DEDUP_WINDOW_DAYS"),),
+            )
             rows = cur.fetchall()
         return {row[0] for row in rows}
 
@@ -41,11 +43,15 @@ class ArticleDeduplicator:
         try:
             fresh = self._load()
         except Exception:
-            logger.exception(f"Dedup cache refresh failed; keeping the current {len(self.local_cache)} article IDs")
+            logger.exception(
+                f"Dedup cache refresh failed; keeping the current {len(self.local_cache)} article IDs"
+            )
             return
         dropped = len(self.local_cache - fresh)
         self.local_cache = fresh
-        logger.info(f"Dedup cache refreshed: {len(fresh)} article IDs ({dropped} older than the window dropped)")
+        logger.info(
+            f"Dedup cache refreshed: {len(fresh)} article IDs ({dropped} older than the window dropped)"
+        )
 
     def _hash(self, article_id: str) -> str:
         return hashlib.md5(article_id.encode()).hexdigest()
@@ -55,16 +61,19 @@ class ArticleDeduplicator:
         return self._hash(article_id) in self.local_cache
 
     def mark_seen(self, article_id: str) -> None:
-        """Write the new article to both DB and local cache """
+        """Write the new article to both DB and local cache"""
         id_hash = self._hash(article_id)
 
         # Write to DB
         with self.conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO news_article_ids(article_id_hash, created_at)
                 VALUES (%s,%s)
                 ON CONFLICT DO NOTHING
-            """, (id_hash,datetime.datetime.now(datetime.timezone.utc)))
+            """,
+                (id_hash, datetime.datetime.now(datetime.UTC)),
+            )
             self.conn.commit()
         # Write to local cache
         self.local_cache.add(id_hash)

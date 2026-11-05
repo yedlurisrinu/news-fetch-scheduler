@@ -1,29 +1,34 @@
-from functools import lru_cache
-from pathlib import Path
-from typing import Any, Callable
-
-from common.utils import generate_id
-from article_dedup.article_deduplicator import ArticleDeduplicator
-from config.postgres_setup import instantiate_connection
-from confluent_kafka import KafkaError, Message, Producer
 import json
-import psycopg
 import logging
+from collections.abc import Callable
+from functools import cache
+from pathlib import Path
+from typing import Any
+
+import psycopg
+from confluent_kafka import KafkaError, Message, Producer
+
+from article_dedup.article_deduplicator import ArticleDeduplicator
+from common.utils import generate_id
 from config.confluent_config import read_config
 from config.confluent_producer_setup import get_producer
 from config.news_scheduler_settings import get_setting
+from config.postgres_setup import instantiate_connection
 
 BASE_PATH = str(Path(__file__).parent.parent)
 logger = logging.getLogger(__name__)
 
-@lru_cache(maxsize=None)
+
+@cache
 def _deduplicator() -> ArticleDeduplicator:
     return ArticleDeduplicator(instantiate_connection())
 
-@lru_cache(maxsize=None)
+
+@cache
 def _producer() -> Producer:
     kafka_config = read_config(BASE_PATH + "/resources/kafka-client.properties")
     return get_producer(kafka_config)
+
 
 def _mark_seen(key: str) -> None:
     """Records the key in the dedup store, always through the current (cached) deduplicator.
@@ -41,25 +46,31 @@ def _mark_seen(key: str) -> None:
         logger.warning("[Dedup] Database connection lost, reconnecting once")
         try:
             dedup.conn.close()
-        except Exception:  # noqa: BLE001 - the connection is already broken
+        except Exception:  # noqa: BLE001, S110 - the connection is already broken
             pass
         _deduplicator.cache_clear()
     try:
         _deduplicator().mark_seen(key)
     except Exception:
-        logger.exception("[Dedup] Could not mark article as seen; it will be re-sent next run")
+        logger.exception(
+            "[Dedup] Could not mark article as seen; it will be re-sent next run"
+        )
+
 
 def refresh_dedup_cache() -> None:
     """Reload the current deduplicator's in-memory cache from the DB window (daily job)."""
     _deduplicator().refresh()
 
+
 def publish_to_kafka(articles: list[dict[str, Any]]) -> None:
     """This function is responsible for publishing article to
     conflent kafka after doing dedup check against warm inmemory cache.
     An article is marked seen only after Kafka confirms delivery."""
-    prod  = _producer()
+    prod = _producer()
     published_count = 0
-    produced: set[str] = set()  # keys sent this run; delivery (and mark_seen) is asynchronous
+    produced: set[str] = (
+        set()
+    )  # keys sent this run; delivery (and mark_seen) is asynchronous
 
     def delivery_callback(key: str) -> Callable[[KafkaError | None, Message], None]:
         def on_delivery(err: KafkaError | None, msg: Message) -> None:
@@ -69,19 +80,30 @@ def publish_to_kafka(articles: list[dict[str, Any]]) -> None:
                 return
             published_count += 1
             _mark_seen(key)
+
         return on_delivery
 
     for article in articles:
-        key =  article["link"]+ article['published_at'] + article['source']
+        key = article["link"] + article["published_at"] + article["source"]
         if key not in produced and not _deduplicator().is_duplicate(key):
             produced.add(key)
-            prod.produce(get_setting('TOPIC_NAME'), json.dumps(article), generate_id(key),
-                         on_delivery=delivery_callback(key))
+            prod.produce(
+                get_setting("TOPIC_NAME"),
+                json.dumps(article),
+                generate_id(key),
+                on_delivery=delivery_callback(key),
+            )
             prod.poll(0)
-            logger.debug(f"Produced messages to topic {get_setting('TOPIC_NAME')}: key = {key:12}")
+            logger.debug(
+                f"Produced messages to topic {get_setting('TOPIC_NAME')}: key = {key:12}"
+            )
 
     # send any outstanding or buffered messages to the Kafka broker
-    remaining = prod.flush(get_setting('KAFKA_FLUSH_TIMEOUT_SECONDS'))
+    remaining = prod.flush(get_setting("KAFKA_FLUSH_TIMEOUT_SECONDS"))
     if remaining > 0:
-        logger.warning(f"[Kafka] {remaining} messages not delivered before flush timeout")
-    logger.info(f"[Kafka] Total {len(articles)} articles, Published {published_count} articles after dedup")
+        logger.warning(
+            f"[Kafka] {remaining} messages not delivered before flush timeout"
+        )
+    logger.info(
+        f"[Kafka] Total {len(articles)} articles, Published {published_count} articles after dedup"
+    )

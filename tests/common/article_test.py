@@ -2,12 +2,11 @@
 ### Unit tests for src/common/article.py
 Tests the Article Pydantic model construction, optional fields, and serialization.
 """
-import pytest
+
 from common.article import Article
 
 
 class TestArticle:
-
     ### Construction
 
     def test_all_fields(self):
@@ -41,8 +40,12 @@ class TestArticle:
     def test_partial_fields(self):
         # Pydantic v2 Optional[str] fields are required — must pass None explicitly
         article = Article(
-            source="Reuters", title="Breaking News",
-            summary=None, link=None, published_at=None, fetched_at=None,
+            source="Reuters",
+            title="Breaking News",
+            summary=None,
+            link=None,
+            published_at=None,
+            fetched_at=None,
         )
         assert article.source == "Reuters"
         assert article.title == "Breaking News"
@@ -53,8 +56,12 @@ class TestArticle:
 
     def test_model_dump_returns_dict(self):
         article = Article(
-            source="TechCrunch", title="AI News", summary="Details here.",
-            link=None, published_at=None, fetched_at=None,
+            source="TechCrunch",
+            title="AI News",
+            summary="Details here.",
+            link=None,
+            published_at=None,
+            fetched_at=None,
         )
         result = article.model_dump()
         assert isinstance(result, dict)
@@ -64,8 +71,12 @@ class TestArticle:
 
     def test_model_dump_includes_none_values(self):
         article = Article(
-            source="Wired", title=None, summary=None,
-            link=None, published_at=None, fetched_at=None,
+            source="Wired",
+            title=None,
+            summary=None,
+            link=None,
+            published_at=None,
+            fetched_at=None,
         )
         result = article.model_dump()
         assert "link" in result
@@ -73,9 +84,20 @@ class TestArticle:
 
     def test_model_dump_all_keys_present(self):
         article = Article(
-            source=None, title=None, summary=None,
-            link=None, published_at=None, fetched_at=None,
+            source=None,
+            title=None,
+            summary=None,
+            link=None,
+            published_at=None,
+            fetched_at=None,
         )
         result = article.model_dump()
-        expected_keys = {"source", "title", "summary", "link", "published_at", "fetched_at"}
+        expected_keys = {
+            "source",
+            "title",
+            "summary",
+            "link",
+            "published_at",
+            "fetched_at",
+        }
         assert expected_keys == set(result.keys())

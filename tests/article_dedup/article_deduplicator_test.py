@@ -3,9 +3,11 @@
 Tests cache warm-up, duplicate detection, and mark-seen logic
 using a fully mocked psycopg connection.
 """
+
 import hashlib
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import MagicMock, call, patch
 
 from article_dedup.article_deduplicator import ArticleDeduplicator
 
@@ -25,7 +27,6 @@ def mock_conn():
 
 
 class TestWarmCache:
-
     ### Cache warm-up on init
 
     def test_warm_cache_populates_local_cache(self, mock_conn):
@@ -52,13 +53,15 @@ class TestWarmCache:
 
         executed_sql = cursor.execute.call_args[0][0]
         assert "NEWS_ARTICLE_IDS" in executed_sql
-        assert "CURRENT_DATE - %s::integer" in executed_sql  # whole days: created_at is a DATE
+        assert (
+            "CURRENT_DATE - %s::integer" in executed_sql
+        )  # whole days: created_at is a DATE
         from config.news_scheduler_settings import get_setting
-        assert cursor.execute.call_args[0][1] == (get_setting('DEDUP_WINDOW_DAYS'),)
+
+        assert cursor.execute.call_args[0][1] == (get_setting("DEDUP_WINDOW_DAYS"),)
 
 
 class TestIsDuplicate:
-
     ### Duplicate detection via local cache
 
     def test_returns_true_for_known_article(self, mock_conn):
@@ -92,7 +95,6 @@ class TestIsDuplicate:
 
 
 class TestMarkSeen:
-
     ### Writing to DB and local cache
 
     def test_mark_seen_adds_to_local_cache(self, mock_conn):
@@ -160,4 +162,3 @@ class TestRefresh:
 
         assert dedup.local_cache == {"a", "b"}
         logger.exception.assert_called_once()
-

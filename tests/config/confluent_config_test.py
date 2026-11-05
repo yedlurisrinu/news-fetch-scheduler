@@ -3,14 +3,13 @@
 Tests config file parsing: key=value pairs, comment skipping, blank line skipping,
 value-with-equals handling, and FileNotFoundError propagation.
 """
+
 import pytest
-from unittest.mock import mock_open, patch
 
 from config.confluent_config import read_config
 
 
 class TestReadConfig:
-
     ### Successful parsing
 
     def test_parses_key_value_pairs(self, tmp_path):
@@ -50,7 +49,9 @@ class TestReadConfig:
     def test_value_containing_equals_sign(self, tmp_path):
         """Values that contain '=' should not be split on the second '='."""
         config_file = tmp_path / "client.properties"
-        config_file.write_text("sasl.jaas.config=org.apache.kafka.Mechanism required username=\"user\" password=\"p=ass\";\n")
+        config_file.write_text(
+            'sasl.jaas.config=org.apache.kafka.Mechanism required username="user" password="p=ass";\n'
+        )
 
         result = read_config(str(config_file))
 

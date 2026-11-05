@@ -1,9 +1,11 @@
 import hashlib
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from datetime import datetime, timezone
+
 
 def generate_id(key: str) -> str:
     return hashlib.md5(key.encode()).hexdigest()
+
 
 def parse_to_iso(date_str: str) -> str:
     """
@@ -18,6 +20,6 @@ def parse_to_iso(date_str: str) -> str:
     try:
         dt = parsedate_to_datetime(date_str)
         return dt.isoformat()
-    except Exception:
+    except Exception:  # noqa: BLE001 - any unparsable date falls back to now
         # Fallback to current UTC time
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()

@@ -3,28 +3,25 @@
 Tests that get_producer passes the correct environment variables and
 merges the supplied config into the Producer constructor call.
 """
-import pytest
-from unittest.mock import MagicMock, patch, call
+
+from unittest.mock import MagicMock, patch
 
 from config.confluent_producer_setup import get_producer
 
 
 class TestGetProducer:
-
     ### Environment variable injection
 
     def test_uses_env_var(self):
-        env = {
-            "bootstrap.servers": "kafka:9092",
-            'security.protocol':'PLAINTEXT'
-        }
+        env = {"bootstrap.servers": "kafka:9092", "security.protocol": "PLAINTEXT"}
         with patch("config.confluent_producer_setup.Producer") as mock_producer_cls:
-             get_producer(env)
+            get_producer(env)
         kwargs = mock_producer_cls.call_args[0][0]
         assert kwargs["bootstrap.servers"] == "kafka:9092"
         assert kwargs["security.protocol"] == "PLAINTEXT"
 
     """Not relevant for local testing only when deployed to AWS"""
+
     def test_uses_sasl_credentials_from_env(self):
         env = {
             "sasl.username": "kafka_user",
@@ -38,6 +35,7 @@ class TestGetProducer:
         assert kwargs["sasl.password"] == "secret123"
 
     """Not relevant for local development but might be useful when deploying to AWS"""
+
     def test_uses_client_id_from_env(self):
         env = {
             "client.id": "news-scheduler",
@@ -61,7 +59,9 @@ class TestGetProducer:
 
     def test_returns_producer_instance(self):
         mock_instance = MagicMock()
-        with patch("config.confluent_producer_setup.Producer", return_value=mock_instance):
+        with patch(
+            "config.confluent_producer_setup.Producer", return_value=mock_instance
+        ):
             result = get_producer({})
 
         assert result is mock_instance

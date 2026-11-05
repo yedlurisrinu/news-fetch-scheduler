@@ -4,6 +4,7 @@ test collection. publisher.py creates its connection and producer lazily (lru_ca
 factories), so nothing connects at import time; these patches are a guard so that
 no test can ever open a real Postgres connection or create a real Kafka producer.
 """
+
 import atexit
 from unittest.mock import MagicMock, patch
 
